@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DrawDash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        top: -40%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          rgba(245, 230, 66, 0.07) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 3rem 3rem 2.5rem;
+        width: 100%;
+        max-width: 420px;
+        position: relative;
+        z-index: 1;
+        animation: fadeUp 0.5s ease both;
+      }
+
+      .card .logo {
+        font-size: 2.6rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .tagline {
+        font-size: 0.75rem;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 2.5rem;
+      }
+
+      .card input[type="text"] {
+        margin-bottom: 1.75rem;
+      }
+
+      .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+
+      .divider {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 2rem 0 1.25rem;
+      }
+
+      .error {
+        font-size: 0.75rem;
+        color: var(--danger);
+        margin-top: -1.25rem;
+        margin-bottom: 1rem;
+        display: none;
+      }
+
+      #room-code-display {
+        display: none;
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      #room-code-display .code {
+        display: inline-block;
+        margin-top: 0.4rem;
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: var(--accent);
+        letter-spacing: 0.2em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">Draw<span>Dash</span></div>
+      <p class="tagline">draw fast. guess faster.</p>
+
+      <label class="field-label" for="username">your name</label>
+      <input
+        type="text"
+        id="username"
+        placeholder="e.g. speedy_pablo"
+        autocomplete="off"
+      />
+
+      <div class="btn-row">
+        <button class="btn-primary" id="create-room">create room</button>
+        <button class="btn-secondary" id="join-room">join room</button>
+      </div>
+
+      <hr class="divider" />
+
+      <div id="room-code-display">
+        room code
+        <span class="code" id="room-code"></span>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="join-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">join a room</span>
+          <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <label class="field-label" for="join-code">room code</label>
+        <input
+          type="text"
+          id="join-code"
+          placeholder="e.g. XK92"
+          maxlength="6"
+          autocomplete="off"
+        />
+        <button class="btn-primary" id="submit-code">join &rarr;</button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+      /**
+       * Create room
+       */
+      document.getElementById("create-room").addEventListener("click", () => {
+        response = fetch(`${API_URL}/create`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            if (data.code) {
+              const name = document.getElementById("username").value.trim();
+              !name ? handleUsername() : Store.set("user", name);
+              const code = data.code.trim().toUpperCase();
+              if (!code) return;
+              Store.set("room", code);
+              window.location.href = "game.html";
+            } else {
+              alert("Failed to create room. Please try again.");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while creating the room. Please try again.");
+          });
+      });
+
+      /**
+       * Join a room
+       *
+       */
+      const modal = document.getElementById("join-modal");
+
+      document.getElementById("join-room").addEventListener("click", () => {
+        modal.classList.add("open");
+
+      });
+
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.classList.remove("open");
+      });
+
+      const modalClose = document.getElementById("modal-close");
+      modalClose.onclick = function () {
+        modal.classlist.remove("open");
+      };
+
+      const submitCode = document.getElementById("submit-code");
+      submitCode.onclick = function () {
+        const name = document.getElementById("username").value.trim();
+        !name ? handleUsername() : Store.set("user", name);
+        const code = document.getElementById("join-code").value.trim().toUpperCase();
+        if (!code) return;
+        Store.set("room", code);
+        window.location.href = "game.html";
+      };
+    </script>
+  </body>
+</html>

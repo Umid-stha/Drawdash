@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DrawDash — Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .game-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .canvas-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .canvas-placeholder {
+      width: 100%;
+      max-width: 680px;
+      aspect-ratio: 4/3;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin: 1.5rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+    }
+
+    .canvas-placeholder .icon { font-size: 2.5rem; opacity: 0.3; }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 1rem 1.25rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Draw<span>Dash</span></div>
+    <div class="room-badge">room &nbsp;<strong id="header-room-code">—</strong></div>
+    <div class="user-pill" id="header-username">—</div>
+  </header>
+
+  <div class="game-layout">
+    <div class="canvas-area">
+      <div class="canvas-placeholder">
+        <div class="icon">&#9999;&#65039;</div>
+        <span>canvas coming soon</span>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="dot"></div>
+        live chat
+      </div>
+
+      <div id="chat-box"></div>
+
+      <div class="chat-input-area">
+        <input type="text" id="messageInput" placeholder="your guess..." autocomplete="off" />
+        <button class="send-btn" id="send-btn">send</button>
+      </div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    handleWebsocket();
+    document.getElementById("send-btn").addEventListener("click", sendMessage);
+  </script>
+</body>
+</html>
