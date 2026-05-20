@@ -66,6 +66,27 @@ function appendMessage(user, message, isSelf = false, isSystem = false) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// renders the leaderboard from a players array
+function renderLeaderboard(players) {
+  const list = document.getElementById('player-list');
+  const sorted = [...players].sort((a, b) => b.points - a.points);
+  list.innerHTML = sorted.map((p, i) => {
+    const rank = i + 1;
+    const isYou = p.username === USER;
+    const initials = p.username.substring(0, 2);
+    return `
+      <div class="player-row rank-${rank}">
+        <div class="player-rank">${rank <= 3 ? ['&#129351;','&#129352;','&#129353;'][rank-1] : rank}</div>
+        <div class="player-avatar">${initials}</div>
+        <div class="player-info">
+          <div class="player-name ${isYou ? 'is-you' : ''}">${p.username}</div>
+        </div>
+        <div class="player-score">${p.points}</div>
+      </div>`;
+  }).join('');
+}
+ 
+
 let ws=null;
 
 /**
@@ -73,23 +94,32 @@ let ws=null;
  *
  */
 function handleWebsocket() {
-  ws = new WebSocket(`${API_URL}/join/${ROOM}`);
+  ws = new WebSocket(`${API_URL}/join/${ROOM}?user=${USER}`);
 
   ws.onopen = function () {
     appendMessage('', `Connected to WebSocket server room ${ROOM}`, false, true);
   };
 
   ws.onmessage = function (event) {
-    var chat = JSON.parse(event.data);
-    if (chat.user != USER) appendMessage(chat.user, chat.message);
+    const message = JSON.parse(event.data);
+    switch (message.type) {
+      case 'chat':
+        console.log(message)
+        if (message.user != USER) appendMessage(message.user, message.message);
+        break;
+      case 'leaderboard':
+        renderLeaderboard(message.player);
+        break;
+      // handle other message types (e.g., game updates) here
+    }
   };
 
   ws.onclose = function () {
     appendMessage('', 'disconnected', false, true);
-    setTimeout(() => {
-      appendMessage('', 'Retrying', false, true);
-      handleWebsocket();
-    }, 1000);
+    // setTimeout(() => {
+    //   appendMessage('', 'Retrying', false, true);
+    //   handleWebsocket();
+    // }, 1000);
   };
 
   ws.onerror = function (error) {
@@ -107,7 +137,7 @@ function sendMessage() {
   if (!input) return;
   const text = input.value.trim();
   if (!text || !ws || ws.readyState != WebSocket.OPEN) return;
-  let message = { user: USER, message: text };
+  let message = { user: USER, message: text, type: "chat"};
   ws.send(JSON.stringify(message));
   appendMessage(USER, text, true);
   input.value = "";
@@ -124,3 +154,54 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+
+/*
+============== Canvas ==================
+*/
+const canvas = document.querySelector('canvas');
+const canvasRect = canvas.getBoundingClientRect();
+
+const ctx = canvas.getContext("2d");
+ctx.fillStyle = "white";
+
+//states
+let running = true;
+let isDrawing = false;
+let xPos = null;
+let yPos = null;
+let currX = null;
+let currY = null;
+
+canvas.addEventListener('mousedown', (e) => {
+  isDrawing=true;
+  xPos = e.clientX - canvasRect.left;
+  yPos = Math.floor(e.clientY - canvasRect.top);
+  ctx.moveTo(xPos, yPos);
+  console.log(xPos, yPos)
+})
+
+canvas.addEventListener('mouseup', (e) => {
+  isDrawing=false;
+})
+
+canvas.addEventListener('mouseleave', (e) => {
+  isDrawing = false;
+})
+
+canvas.addEventListener('mousemove', (e) => {
+  if (isDrawing) {
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+
+    ctx.beginPath();
+    ctx.moveTo(xPos, yPos);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';    // smooth joins
+    ctx.stroke();
+
+    xPos = x;
+    yPos = y;
+  }
+})

@@ -11,9 +11,9 @@ import (
 )
 
 type Player struct {
-	username   string
-	points     int
-	activeTurn bool
+	Username   string `json:"username"`
+	Points     int    `json:"points"`
+	ActiveTurn bool   `json:"turn"`
 }
 
 type Game struct {
@@ -28,12 +28,6 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-}
-
-type ChatMessage struct {
-	User    string `json:"user"`
-	Message string `json:"message"`
-	Type    string `json:"type"`
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,17 +48,17 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		delete(game.players, conn)
 		conn.Close()
+		returnLeaderboard(game)
 	}()
 
-	mutex.Lock()
 	game.players[conn] = &Player{
-		username:   user,
-		points:     0,
-		activeTurn: false,
+		Username:   user,
+		Points:     100,
+		ActiveTurn: false,
 	}
-	mutex.Unlock()
 
 	// return a list of players whenever a new connection appears
+	returnLeaderboard(game)
 
 	for {
 		chat := &ChatMessage{}
