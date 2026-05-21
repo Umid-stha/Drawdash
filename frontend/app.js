@@ -8,6 +8,7 @@ const Store = {
 
 const USER = Store.get("user");
 const ROOM = Store.get("room");
+const HOST = Store.get("host") === "true";
 
 /**
  * Generates a random username if value is empty
@@ -94,7 +95,7 @@ let ws=null;
  *
  */
 function handleWebsocket() {
-  ws = new WebSocket(`${API_URL}/join/${ROOM}?user=${USER}`);
+  ws = new WebSocket(`${API_URL}/join/${ROOM}?user=${USER}&host=${HOST}`);
 
   ws.onopen = function () {
     appendMessage('', `Connected to WebSocket server room ${ROOM}`, false, true);
@@ -110,6 +111,9 @@ function handleWebsocket() {
       case 'leaderboard':
         renderLeaderboard(message.player);
         break;
+      case 'start':
+        document.getElementById('canvas-placeholder').classList.add("hidden")
+        document.getElementById('canvas-area').classList.remove("hidden")
       // handle other message types (e.g., game updates) here
     }
   };
@@ -143,6 +147,16 @@ function sendMessage() {
   input.value = "";
 }
 
+/**
+ * Sends the server signal to start the game
+ * 
+ * @returns 
+ */
+function startGame() {
+  if (!ws || ws.readyState != WebSocket.OPEN) return;
+  ws.send(JSON.stringify({type: "start"}));
+}
+
 
 // ── enter key for chat ──
 document.addEventListener("DOMContentLoaded", () => {
@@ -159,7 +173,8 @@ document.addEventListener("DOMContentLoaded", () => {
 ============== Canvas ==================
 */
 const canvas = document.querySelector('canvas');
-const canvasRect = canvas.getBoundingClientRect();
+const cursorCtx = document.getElementById('cursor-canvas').getContext('2d');
+canvas.style.cursor = 'none';
 
 const ctx = canvas.getContext("2d");
 ctx.fillStyle = "white";
@@ -172,7 +187,110 @@ let yPos = null;
 let currX = null;
 let currY = null;
 
+// default controls
+const black = document.getElementById("black");
+const medium = document.getElementById("medium");
+const pencil = document.getElementById("pencil");
+let activeColor = black;
+let activeStroke = medium;
+let activePen = pencil;
+
+// color picker
+black.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = black;
+  activeColor.classList.add('active');
+});
+const white = document.getElementById("white");
+white.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = white;
+  activeColor.classList.add('active');
+});
+const red = document.getElementById("red");
+red.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = red;
+  activeColor.classList.add('active');
+});
+const blue = document.getElementById("blue");
+blue.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = blue;
+  activeColor.classList.add('active');
+});
+const green = document.getElementById("green");
+green.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = green;
+  activeColor.classList.add('active');
+});
+const yellow = document.getElementById("yellow");
+yellow.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = yellow;
+  activeColor.classList.add('active');
+});
+const brown = document.getElementById("brown");
+brown.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = brown;
+  activeColor.classList.add('active');
+});
+const purple = document.getElementById("purple");
+purple.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = purple;
+  activeColor.classList.add('active');
+});
+const orange = document.getElementById("orange");
+orange.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = orange;
+  activeColor.classList.add('active');
+});
+const pink = document.getElementById("pink");
+pink.addEventListener('click', () => {
+  activeColor.classList.remove('active');
+  activeColor = pink;
+  activeColor.classList.add('active');
+});
+
+// pen type
+pencil.addEventListener('click', () => {
+  activePen.classList.remove('active');
+  activePen = pencil;
+  activePen.classList.add('active');
+});
+const eraser = document.getElementById("eraser");
+eraser.addEventListener('click', () => {
+  activePen.classList.remove('active');
+  activePen = eraser;
+  activePen.classList.add('active');
+});
+
+
+// stroke radius
+const thin = document.getElementById("thin");
+thin.addEventListener('click', () => {
+  activeStroke.classList.remove('active');
+  activeStroke = thin;
+  activeStroke.classList.add('active');
+});
+medium.addEventListener('click', () => {
+  activeStroke.classList.remove('active');
+  activeStroke = medium;
+  activeStroke.classList.add('active');
+});
+const thick = document.getElementById("thick");
+thick.addEventListener('click', () => {
+  activeStroke.classList.remove('active');
+  activeStroke = thick;
+  activeStroke.classList.add('active');
+});
+
 canvas.addEventListener('mousedown', (e) => {
+  const canvasRect = canvas.getBoundingClientRect();
   isDrawing=true;
   xPos = e.clientX - canvasRect.left;
   yPos = Math.floor(e.clientY - canvasRect.top);
@@ -185,19 +303,35 @@ canvas.addEventListener('mouseup', (e) => {
 })
 
 canvas.addEventListener('mouseleave', (e) => {
+  cursorCtx.clearRect(0, 0, canvas.width, canvas.height);
   isDrawing = false;
 })
 
 canvas.addEventListener('mousemove', (e) => {
-  if (isDrawing) {
-    const x = e.clientX - canvasRect.left;
-    const y = e.clientY - canvasRect.top;
+  const canvasRect = canvas.getBoundingClientRect();
+  const x = e.clientX - canvasRect.left;
+  const y = e.clientY - canvasRect.top;
+  let strokeWidth = activeStroke.dataset.stroke;
 
+  cursorCtx.clearRect(0, 0, canvas.width, canvas.height); // wipe previous
+  cursorCtx.beginPath();
+  activePen === eraser ? strokeWidth = 20 : strokeWidth = activeStroke.dataset.stroke;
+  cursorCtx.arc(x, y, strokeWidth / 2, 0, Math.PI * 2);
+  cursorCtx.strokeStyle = '#000';
+  cursorCtx.lineWidth = 1;
+  cursorCtx.stroke();
+
+  if (isDrawing) {
     ctx.beginPath();
     ctx.moveTo(xPos, yPos);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 3;
+    if (activePen === eraser) {
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 20; // eraser is larger
+    } else {
+      ctx.strokeStyle = activeColor.dataset.color;
+      ctx.lineWidth = activeStroke.dataset.stroke;
+    }
     ctx.lineCap = 'round';    // smooth joins
     ctx.stroke();
 

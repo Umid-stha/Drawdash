@@ -113,23 +113,43 @@
       flex-shrink: 0;
     }
  
+    
     /* ── canvas ── */
+
+    .hidden { display: none !important; }
     .canvas-area {
-      border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: var(--surface);
+      background-color: #5656565e;
       color: var(--muted);
       font-size: 0.8rem;
       letter-spacing: 0.08em;
       gap: 0.75rem;
     }
- 
-    canvas {
-      background-color: white;
+
+    .canvas-placeholder {
+      width: 100%;
+      max-width: 680px;
+      aspect-ratio: 4/3;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin: 1.5rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+    }
+ 
+    #canvas {
+      background-color: white;
+      border-radius: 4px;
     }
 
     .canvas-placeholder .icon { font-size: 2.5rem; opacity: 0.3; }
@@ -155,18 +175,34 @@
       gap: 0.5rem;
     }
 
-    .color-controls {
+    .controls {
       display: flex;
       flex-direction: row;
-      gap: 0.5rem;
+      justify-content: space-between;
+      width: 450px;
+    }
+
+    .color-controls {
+      display: grid;
+      grid-template-columns: repeat(5, 30px);
+      gap: 0.3rem;
+    }
+    
+    .pen-type, .stroke-radius {
+      display: flex;
+      flex-direction: row;
+      gap: 0.3rem;
     }
 
     .color-palette {
       width: 30px;
       height: 30px;
       border-radius: 8px;
-      border: 2px solid white;
       cursor: pointer;
+    }
+
+    .active {
+      border: 2px solid var(--accent-dim);
     }
 
     .white{
@@ -190,6 +226,53 @@
     .brown {
       background-color: brown;
     }
+    .purple {
+      background-color: purple;
+    }
+    .pink {
+      background-color: pink;
+    }
+    .orange {
+      background-color: orange;
+    }
+
+    .pencil, .eraser {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: white;
+    }
+
+    .thin, .medium, .thick {
+      background-color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .thin span {
+      display: block;
+      width: 2px;
+      height: 2px;
+      background-color: black;
+      border-radius: 50%;
+    }
+
+    .medium span {
+      display: block;
+      width: 6px;
+      height: 6px;
+      background-color: black;
+      border-radius: 50%;
+    }
+
+    .thick span {
+      display: block;
+      width: 10px;
+      height: 10px;
+      background-color: black;
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
@@ -209,17 +292,44 @@
       </div>
     </aside>
 
-    <div class="canvas-area">
+    <div class="canvas-area" id="canvas-placeholder">
+      <div class="canvas-placeholder">
+        <div class="icon">&#9999;&#65039;</div>
+        <span>canvas coming soon</span>
+        <span id="waiting-message">waiting for host to start the game...</span>
+        <button class="btn-primary" id="start-game-btn">start game</button>
+      </div>
+    </div>
+    
+    <div class="canvas-area hidden" id="canvas-area">
       <div class="icon">&#9999;&#65039;</div>
-      <canvas id="canvas" height="450" width="450"></canvas>
-      <div class="color-controls">
-        <span class="color-palette white" data-color="white"></span>
-        <span class="color-palette black" data-color="black"></span>
-        <span class="color-palette red" data-color="red"></span>
-        <span class="color-palette green" data-color="green"></span>
-        <span class="color-palette blue" data-color="blue"></span>
-        <span class="color-palette yellow" data-color="yellow"></span>
-        <span class="color-palette brown" data-color="brown"></span>
+      <div style="position: relative;">
+          <canvas id="canvas" height="450" width="450"></canvas>
+          <canvas id="cursor-canvas" ... style="position: absolute; top: 0; left: 0; pointer-events: none;" height="450" width="450"></canvas>
+      </div>
+      <div class="controls">
+        <div class="color-controls">
+          <span class="color-palette white" data-color="white" id="white"></span>
+          <span class="color-palette black active" data-color="black" id="black"></span>
+          <span class="color-palette red" data-color="red" id="red"></span>
+          <span class="color-palette green" data-color="green" id="green"></span>
+          <span class="color-palette blue" data-color="blue" id="blue"></span>
+          <span class="color-palette yellow" data-color="yellow" id="yellow"></span>
+          <span class="color-palette brown" data-color="brown" id="brown"></span>
+          <span class="color-palette purple" data-color="purple" id="purple"></span>
+          <span class="color-palette pink" data-color="pink" id="pink"></span>
+          <span class="color-palette orange" data-color="orange" id="orange"></span>
+        </div>
+        <div class="pen-type">
+          <span class="color-palette pencil active" data-pen="pencil" id="pencil"><img height="20" src="assets/pencil.png" alt="Pencil"></span>
+          <span class="color-palette eraser" data-pen="eraser" id="eraser"><img height="20" src="assets/eraser.png" alt="Eraser"></span>
+        </div>
+        <div class="stroke-radius">
+          <span class="color-palette thin" data-stroke="1" id="thin"><span></span></span>
+          <span class="color-palette medium active" data-stroke="4" id="medium"><span></span></span>
+          <span class="color-palette thick" data-stroke="8" id="thick"><span></span></span>
+
+        </div>
       </div>
     </div>
 
@@ -240,8 +350,16 @@
 
   <script src="app.js"></script>
   <script>
+    if (HOST) {
+      document.getElementById("waiting-message").style.display = "none";
+      document.getElementById("start-game-btn").style.display = "block";
+    } else {
+      document.getElementById("waiting-message").style.display = "block";
+      document.getElementById("start-game-btn").style.display = "none";
+    }
     handleWebsocket();
     document.getElementById("send-btn").addEventListener("click", sendMessage);
+    document.getElementById("start-game-btn").addEventListener("click", startGame);
   </script>
 </body>
 </html>

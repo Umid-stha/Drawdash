@@ -14,10 +14,12 @@ type Player struct {
 	Username   string `json:"username"`
 	Points     int    `json:"points"`
 	ActiveTurn bool   `json:"turn"`
+	Host       bool   `json:"host"`
 }
 
 type Game struct {
 	players map[*websocket.Conn]*Player
+	Host    string
 }
 
 var games = make(map[string]*Game)
@@ -33,6 +35,7 @@ var upgrader = websocket.Upgrader{
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 	user := r.URL.Query().Get("user")
+	host := r.URL.Query().Get("host")
 	game, ok := games[code]
 	if !ok {
 		fmt.Println("Error Game doesn't exist: ")
@@ -53,16 +56,16 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	game.players[conn] = &Player{
 		Username:   user,
-		Points:     100,
+		Points:     0,
 		ActiveTurn: false,
+		Host:       host == "true",
 	}
 
 	// return a list of players whenever a new connection appears
 	returnLeaderboard(game)
 
 	for {
-		chat := &ChatMessage{}
-		err := conn.ReadJSON(chat)
+		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("An error occured: ", err)
 			mutex.Lock()
@@ -70,12 +73,34 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			mutex.Unlock()
 			break
 		}
-		fmt.Println(chat)
-		for client := range game.players {
-			client.WriteJSON(chat)
+		base := &BaseMessage{}
+		json.Unmarshal(raw, base)
+		switch base.Type {
+		case "chat":
+			chat := &ChatMessage{}
+			json.Unmarshal(raw, chat)
+			for client := range game.players {
+				err := client.WriteJSON(chat)
+				if err != nil {
+					fmt.Println("An error occured: ", err)
+					delete(game.players, conn)
+					break
+				}
+			}
+		case "start":
+			for client, player := range game.players {
+				if player.Host {
+					player.ActiveTurn = true
+				}
+				err := client.WriteJSON(base)
+				if err != nil {
+					fmt.Println("An error occured: ", err)
+					delete(game.players, conn)
+					break
+				}
+			}
 		}
 	}
-
 }
 
 type RoomCode struct {
