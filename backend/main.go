@@ -18,8 +18,9 @@ type Player struct {
 }
 
 type Game struct {
-	players map[*websocket.Conn]*Player
-	Host    string
+	players    map[*websocket.Conn]*Player
+	gameStatus bool
+	Host       string
 }
 
 var games = make(map[string]*Game)
@@ -88,6 +89,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		case "start":
+			game.gameStatus = true
 			for client, player := range game.players {
 				if player.Host {
 					player.ActiveTurn = true
@@ -97,6 +99,19 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 					fmt.Println("An error occured: ", err)
 					delete(game.players, conn)
 					break
+				}
+			}
+		case "drawing":
+			drawing := &Drawing{}
+			json.Unmarshal(raw, drawing)
+			for client := range game.players {
+				if client != conn {
+					err := client.WriteJSON(drawing)
+					if err != nil {
+						fmt.Println("An error occured: ", err)
+						delete(game.players, conn)
+						break
+					}
 				}
 			}
 		}
@@ -121,7 +136,8 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	//add new game instance
 	games[roomCode] = &Game{
-		players: make(map[*websocket.Conn]*Player),
+		players:    make(map[*websocket.Conn]*Player),
+		gameStatus: false,
 	}
 
 	response := RoomCode{roomCode}

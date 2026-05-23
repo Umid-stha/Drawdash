@@ -24,8 +24,9 @@ func returnLeaderboard(game *Game) {
 		players = append(players, player)
 	}
 	leaderboard := Leaderboard{
-		Players: players,
-		Type:    "leaderboard",
+		Players:    players,
+		GameStatus: game.gameStatus,
+		Type:       "leaderboard",
 	}
 	for client := range game.players {
 		client.WriteJSON(leaderboard)
