@@ -307,7 +307,7 @@
           <canvas id="canvas" height="450" width="450"></canvas>
           <canvas id="cursor-canvas" ... style="position: absolute; top: 0; left: 0; pointer-events: none;" height="450" width="450"></canvas>
       </div>
-      <div class="controls">
+      <div class="controls" id="controls">
         <div class="color-controls">
           <span class="color-palette white" data-color="white" id="white"></span>
           <span class="color-palette black active" data-color="black" id="black"></span>
@@ -360,6 +360,7 @@
     handleWebsocket();
     document.getElementById("send-btn").addEventListener("click", sendMessage);
     document.getElementById("start-game-btn").addEventListener("click", startGame);
+
   </script>
 </body>
 </html>

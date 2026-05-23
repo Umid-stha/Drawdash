@@ -147,6 +147,9 @@
 
     <script src="app.js"></script>
     <script>
+      if (USER) {
+        document.getElementById("username").value = USER;
+      }
       /**
        * Create room
        */

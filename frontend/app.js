@@ -10,6 +10,36 @@ const USER = Store.get("user");
 const ROOM = Store.get("room");
 const HOST = Store.get("host") === "true";
 
+const canvas = document.querySelector('canvas');
+const cursorCtx = document.getElementById('cursor-canvas').getContext('2d');
+canvas.style.cursor = 'none';
+
+const ctx = canvas.getContext("2d");
+ctx.fillStyle = "white";
+
+//states
+let running = true;
+let isDrawing = false;
+let xPos = null;
+let yPos = null;
+let currX = null;
+let currY = null;
+let activeTurn = false;
+
+// default controls
+const black = document.getElementById("black");
+const medium = document.getElementById("medium");
+const pencil = document.getElementById("pencil");
+let activeColor = black;
+let activeStroke = medium;
+let activePen = pencil;
+
+//temporary remove later --------------------------------------------------------------------------------------------------------
+if (HOST) {
+  activeTurn = true
+}
+hideControls();
+
 /**
  * Generates a random username if value is empty
  */
@@ -33,7 +63,7 @@ function escapeHtml(str) {
 
 // ── chat ──
 const chatBox = document.getElementById('chat-box');
- 
+
 /**
  * Appends Message to chat box.
  * 
@@ -45,24 +75,24 @@ const chatBox = document.getElementById('chat-box');
  */
 function appendMessage(user, message, isSelf = false, isSystem = false) {
   if (!chatBox) return;
- 
+
   const wrapper = document.createElement('div');
   wrapper.classList.add('msg');
-  if (isSelf)    wrapper.classList.add('self');
-  if (isSystem)  wrapper.classList.add('msg-system');
- 
+  if (isSelf) wrapper.classList.add('self');
+  if (isSystem) wrapper.classList.add('msg-system');
+
   if (!isSystem) {
     const meta = document.createElement('div');
     meta.classList.add('msg-meta');
     meta.innerHTML = `<span class="name">${escapeHtml(user)}</span>`;
     wrapper.appendChild(meta);
   }
- 
+
   const bubble = document.createElement('div');
   bubble.classList.add('msg-bubble');
   bubble.textContent = message;
   wrapper.appendChild(bubble);
- 
+
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -77,7 +107,7 @@ function renderLeaderboard(players) {
     const initials = p.username.substring(0, 2);
     return `
       <div class="player-row rank-${rank}">
-        <div class="player-rank">${rank <= 3 ? ['&#129351;','&#129352;','&#129353;'][rank-1] : rank}</div>
+        <div class="player-rank">${rank <= 3 ? ['&#129351;', '&#129352;', '&#129353;'][rank - 1] : rank}</div>
         <div class="player-avatar">${initials}</div>
         <div class="player-info">
           <div class="player-name ${isYou ? 'is-you' : ''}">${p.username}</div>
@@ -86,9 +116,9 @@ function renderLeaderboard(players) {
       </div>`;
   }).join('');
 }
- 
 
-let ws=null;
+
+let ws = null;
 
 /**
  * Handle Websocket Connection
@@ -105,15 +135,44 @@ function handleWebsocket() {
     const message = JSON.parse(event.data);
     switch (message.type) {
       case 'chat':
-        console.log(message)
         if (message.user != USER) appendMessage(message.user, message.message);
         break;
       case 'leaderboard':
         renderLeaderboard(message.player);
+        if (message.gameStatus) {
+          document.getElementById('canvas-placeholder').classList.add("hidden")
+          document.getElementById('canvas-area').classList.remove("hidden")
+        }
         break;
       case 'start':
         document.getElementById('canvas-placeholder').classList.add("hidden")
         document.getElementById('canvas-area').classList.remove("hidden")
+        if (HOST) {
+          activeTurn = true;
+        }
+        hideControls();
+      case 'drawing':
+        const xPos = parseInt(message.startingX);
+        const yPos = parseInt(message.startingY);
+        const x = parseInt(message.x);
+        const y = parseInt(message.y);
+        const pen = message.pen;
+        const color= message.color;
+        const stroke = parseInt(message.lineWidth);
+        if (!activeTurn) {
+          ctx.beginPath();
+          ctx.moveTo(xPos, yPos);
+          ctx.lineTo(x, y);
+          if (pen === "eraser") {
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 30; // eraser is larger
+          } else {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = stroke;
+          }
+          ctx.lineCap = 'round';    // smooth joins
+          ctx.stroke();
+        }
       // handle other message types (e.g., game updates) here
     }
   };
@@ -141,7 +200,7 @@ function sendMessage() {
   if (!input) return;
   const text = input.value.trim();
   if (!text || !ws || ws.readyState != WebSocket.OPEN) return;
-  let message = { user: USER, message: text, type: "chat"};
+  let message = { user: USER, message: text, type: "chat" };
   ws.send(JSON.stringify(message));
   appendMessage(USER, text, true);
   input.value = "";
@@ -154,7 +213,43 @@ function sendMessage() {
  */
 function startGame() {
   if (!ws || ws.readyState != WebSocket.OPEN) return;
-  ws.send(JSON.stringify({type: "start"}));
+  ws.send(JSON.stringify({ type: "start" }));
+}
+
+/**
+ * Sends the drawing data to server.
+ * 
+ * @param {number} startingX 
+ * @param {number} startingY 
+ * @param {number} x 
+ * @param {number} y 
+ * @param {string} activePen 
+ * @param {string} color 
+ * @param {string} lineWidth 
+ * @returns 
+ */
+function sendDrawing(startingX, startingY, x, y, activePen, color, lineWidth) {
+  drawing = {
+    startingX: startingX.toLocaleString(),
+    startingY: startingY.toLocaleString(),
+    x: x.toLocaleString(),
+    y: y.toLocaleString(),
+    pen: activePen,
+    color: color,
+    lineWidth: lineWidth,
+    type: "drawing"
+  }
+  if (!ws || ws.readyState != WebSocket.OPEN) return;
+  ws.send(JSON.stringify(drawing));
+}
+
+/**
+ * Hides controls if not turn of player
+ */
+function hideControls() {
+  if (!activeTurn) {
+    document.getElementById('controls').classList.add("hidden");
+  }
 }
 
 
@@ -172,28 +267,6 @@ document.addEventListener("DOMContentLoaded", () => {
 /*
 ============== Canvas ==================
 */
-const canvas = document.querySelector('canvas');
-const cursorCtx = document.getElementById('cursor-canvas').getContext('2d');
-canvas.style.cursor = 'none';
-
-const ctx = canvas.getContext("2d");
-ctx.fillStyle = "white";
-
-//states
-let running = true;
-let isDrawing = false;
-let xPos = null;
-let yPos = null;
-let currX = null;
-let currY = null;
-
-// default controls
-const black = document.getElementById("black");
-const medium = document.getElementById("medium");
-const pencil = document.getElementById("pencil");
-let activeColor = black;
-let activeStroke = medium;
-let activePen = pencil;
 
 // color picker
 black.addEventListener('click', () => {
@@ -291,26 +364,25 @@ thick.addEventListener('click', () => {
 
 canvas.addEventListener('mousedown', (e) => {
   const canvasRect = canvas.getBoundingClientRect();
-  isDrawing=true;
-  xPos = e.clientX - canvasRect.left;
+  isDrawing = true;
+  xPos = Math.floor(e.clientX - canvasRect.left);
   yPos = Math.floor(e.clientY - canvasRect.top);
   ctx.moveTo(xPos, yPos);
   console.log(xPos, yPos)
 })
 
 canvas.addEventListener('mouseup', (e) => {
-  isDrawing=false;
+  isDrawing = false;
 })
 
 canvas.addEventListener('mouseleave', (e) => {
   cursorCtx.clearRect(0, 0, canvas.width, canvas.height);
-  isDrawing = false;
 })
 
 canvas.addEventListener('mousemove', (e) => {
   const canvasRect = canvas.getBoundingClientRect();
-  const x = e.clientX - canvasRect.left;
-  const y = e.clientY - canvasRect.top;
+  const x = Math.floor(e.clientX - canvasRect.left);
+  const y = Math.floor(e.clientY - canvasRect.top);
   let strokeWidth = activeStroke.dataset.stroke;
 
   cursorCtx.clearRect(0, 0, canvas.width, canvas.height); // wipe previous
@@ -321,13 +393,14 @@ canvas.addEventListener('mousemove', (e) => {
   cursorCtx.lineWidth = 1;
   cursorCtx.stroke();
 
-  if (isDrawing) {
+  if (isDrawing && activeTurn) {
+    sendDrawing(xPos, yPos, x, y, activePen.dataset.pen, activeColor.dataset.color, activeStroke.dataset.stroke)
     ctx.beginPath();
     ctx.moveTo(xPos, yPos);
     ctx.lineTo(x, y);
     if (activePen === eraser) {
       ctx.strokeStyle = "white";
-      ctx.lineWidth = 20; // eraser is larger
+      ctx.lineWidth = 30; // eraser is larger
     } else {
       ctx.strokeStyle = activeColor.dataset.color;
       ctx.lineWidth = activeStroke.dataset.stroke;
